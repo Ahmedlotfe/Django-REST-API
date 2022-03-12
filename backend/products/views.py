@@ -1,4 +1,4 @@
-from rest_framework import generics
+from rest_framework import generics, mixins, permissions, authentication
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
@@ -6,11 +6,15 @@ from django.shortcuts import get_object_or_404
 
 from .models import Product
 from .serializers import ProductSerializer
+from .permissions import IsStaffEditorPermission
 
 
 class ProductListCreateAPIView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    authenticated_classes = [authentication.SessionAuthentication,
+                             authentication.TokenAuthentication]
+    permission_classes = [permissions.IsAdminUser, IsStaffEditorPermission]
 
     def perform_create(self, serializer):
         title = serializer.validated_data.get('title')
@@ -20,9 +24,32 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
         serializer.save(content=content)
 
 
-# class ProductListAPIView(generics.ListAPIView):
-#     queryset = Product.objects.all()
-#     serializer_class = ProductSerializer
+class ProductMixinView(mixins.ListModelMixin, mixins.RetrieveModelMixin,
+                       mixins.CreateModelMixin, generics.GenericAPIView):
+
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    lookup_field = 'pk'
+
+    def get(self, request, *args, **kwargs):
+        pk = kwargs.get('pk')
+        if pk:
+            return self.retrieve(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        content = serializer.validated_data.get('content')
+        if content == None:
+            content = "My Name Is Ahmed Lotfe"
+        serializer.save(content=content)
+
+
+class ProductListAPIView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
 
 
 class ProductDetailAPIView(generics.RetrieveAPIView):
