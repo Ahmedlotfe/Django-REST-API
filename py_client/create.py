@@ -20,7 +20,6 @@ if auth_response.status_code == 200:
 
     data = {
         "title": "Hello",
-        "content": "Helloo",
         "price": 49.99
     }
 
